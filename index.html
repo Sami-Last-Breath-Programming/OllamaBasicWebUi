@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Chat</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23c96442'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' font-family='system-ui' font-weight='700' fill='white'>C</text></svg>">
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="brand">AI Chat</div>
+        <button class="new-chat-btn" id="newChatBtn">+ New Chat</button>
+        <div class="history-list" id="historyList"></div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="model-label">Model</div>
+        <select id="modelSelect"></select>
+        <div id="customModelDropdown" class="custom-model-dropdown"></div>
+        <div class="token-counter" id="tokenCounter">Tokens: 0 / 1,000,000</div>
+        <div class="token-bar-bg"><div class="token-bar-fill" id="tokenBarFill"></div></div>
+        <div class="params-toggle" id="paramsToggle">⚙ Parameters</div>
+        <div class="params-panel hidden" id="paramsPanel">
+          <label>Temperature
+            <input type="range" id="temperature" min="0" max="2" step="0.05" value="0.7"/>
+            <span id="tempVal">0.7</span>
+          </label>
+          <label>Max Response Length
+            <input type="number" id="maxTokens" min="256" max="32000" step="256" value="8192"/>
+            <span style="font-size:10px;color:var(--text3)">How long the reply can be (256–32000 tokens)</span>
+          </label>
+          <label>Context / History Limit (tokens)
+            <input type="number" id="contextLimit" min="2000" max="2000000" step="1000" value="100000"/>
+            <span style="font-size:10px;color:var(--text3)">Max history sent to model. Saved per model.</span>
+          </label>
+          <label>System Prompt
+            <textarea id="systemPrompt" rows="4" placeholder="You are a helpful, harmless, and honest AI assistant. Answer clearly and concisely."></textarea>
+            <span style="font-size:10px;color:var(--text3)">Saved per chat · Applied to every message</span>
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+          <span class="topbar-model" id="topbarModel">Select a model</span>
+        </div>
+        <div class="topbar-right">
+          <button class="topbar-dl-btn" id="ollamaTopbarDlBtn" title="Downloading model..." style="display:none">
+            <span class="topbar-dl-spinner"></span>
+            Downloading...
+          </button>
+          <button class="theme-btn" id="themeBtn" title="Toggle dark mode">🌙</button>
+          <button class="clear-btn" id="clearBtn" title="Clear chat">Clear</button>
+        </div>
+      </header>
+
+      <div class="messages" id="messages">
+        <div class="welcome">
+          <div class="welcome-icon">✦</div>
+          <h2>How can I help you today?</h2>
+          <p>Select a model and start chatting.</p>
+        </div>
+      </div>
+
+      <div class="drop-overlay hidden" id="dropOverlay">
+        <div class="drop-box">📂 Drop files to attach</div>
+      </div>
+
+      <div class="attached-files" id="attachedFiles"></div>
+
+      <div class="input-area">
+        <div class="input-box" id="inputBox">
+          <div class="input-top-row">
+            <label class="attach-btn" title="Attach file">📎<input type="file" id="fileInput" multiple accept=".txt,.py,.c,.cpp,.java,.json,.csv,.md,.js,.ts,.html,.css,.xml,.yaml,.yml,.jpg,.jpeg,.png,.gif,.webp,.pdf" hidden/></label>
+            <textarea id="inputText" rows="1" placeholder="Message..."></textarea>
+          </div>
+          <div class="input-bottom-bar">
+            <div class="input-actions-left">
+              <button id="visualModeBtn" class="visual-mode-btn" title="Enable to render charts, graphs and interactive visuals">▶ Run Visual: Off</button>
+            </div>
+            <div class="input-actions">
+              <button id="sendBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings button (bottom right) -->
+  <button class="settings-fab" id="settingsBtn" title="Settings">⚙</button>
+
+  <!-- Settings overlay -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+
+  <!-- Settings panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <span class="settings-title">⚙ Settings</span>
+      <button class="settings-close" id="closeSettingsBtn">✕</button>
+    </div>
+    <div class="settings-body">
+
+      <div class="settings-section">
+        <div class="settings-section-label">Claude Server (Claude.py)</div>
+        <input type="url" id="claudeUrlInput" class="settings-input" placeholder="http://localhost:5000" />
+        <div class="settings-hint">Claude.py proxy URL. Default: http://localhost:5000</div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label" style="display:flex;align-items:center;justify-content:space-between;">Ollama Local
+          <button class="ollama-dl-icon-btn" id="ollamaDlBtn" title="Download a model">⬇</button>
+        </div>
+        <input type="url" id="ollamaUrlInput" class="settings-input" placeholder="http://localhost:11434" />
+        <div class="settings-hint">Local Ollama server. Default: http://localhost:11434</div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label" style="display:flex;align-items:center;justify-content:space-between;">Ollama Colab (ngrok)
+          <div style="display:flex;gap:6px">
+            <button class="ollama-dl-icon-btn" id="ollamaColabRefreshBtn" title="Reconnect & reload models">↺</button>
+            <button class="ollama-dl-icon-btn" id="ollamaColabDlBtn" title="Download a model via Colab">⬇</button>
+          </div>
+        </div>
+        <input type="url" id="ollamaColabUrlInput" class="settings-input" placeholder="https://xxxx.ngrok-free.app" />
+        <div class="settings-hint">Paste your ngrok URL → click ↺ to connect. Saved across refreshes.</div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">Gemini API Key</div>
+        <input type="password" id="geminiKeyInput" class="settings-input" placeholder="AIza..." />
+        <div class="settings-hint">Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">Export History</div>
+        <button class="settings-export-btn" id="exportHistoryBtn">⬇ Export all chats as .txt</button>
+        <div class="settings-hint">Downloads all sessions as a formatted text file.</div>
+      </div>
+
+    </div>
+    <div class="settings-footer">
+      <button class="settings-save-btn" id="saveSettingsBtn">Save Settings</button>
+    </div>
+  </div>
+
+  <div id="settingsToast" class="settings-toast"></div>
+
+<!-- Ollama Local Model Download Window -->
+<div class="ollama-dl-overlay" id="ollamaDlOverlay"></div>
+<div class="ollama-dl-window" id="ollamaDlWindow">
+  <div class="ollama-dl-header">
+    <span class="ollama-dl-title">⬇ Download Model — Local Ollama</span>
+    <button class="ollama-dl-close" id="ollamaDlClose">✕</button>
+  </div>
+  <div class="ollama-dl-body">
+    <div class="ollama-dl-hint">Enter a model ID from <a href="https://ollama.com/library" target="_blank">ollama.com/library</a></div>
+    <div class="ollama-dl-input-row">
+      <input type="text" id="ollamaModelIdInput" class="settings-input" placeholder="e.g. llama3.2:1b" />
+      <button class="ollama-dl-btn" id="ollamaDownloadBtn" disabled>Download</button>
+    </div>
+    <div class="ollama-dl-progress hidden" id="ollamaDlProgress">
+      <div class="ollama-dl-status" id="ollamaDlStatus">Checking...</div>
+      <div class="ollama-dl-bar-bg"><div class="ollama-dl-bar-fill" id="ollamaDlBarFill"></div></div>
+      <div class="ollama-dl-pct-row">
+        <span id="ollamaDlPct">0%</span>
+        <button class="ollama-cancel-btn" id="ollamaCancelBtn">✕ Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ollama Colab Model Download Window -->
+<div class="ollama-dl-overlay" id="ollamaColabDlOverlay"></div>
+<div class="ollama-dl-window" id="ollamaColabDlWindow">
+  <div class="ollama-dl-header">
+    <span class="ollama-dl-title">⬇ Download Model — Colab Ollama</span>
+    <button class="ollama-dl-close" id="ollamaColabDlClose">✕</button>
+  </div>
+  <div class="ollama-dl-body">
+    <div class="ollama-dl-hint">Enter a model ID from <a href="https://ollama.com/library" target="_blank">ollama.com/library</a></div>
+    <div class="ollama-dl-input-row">
+      <input type="text" id="ollamaColabModelIdInput" class="settings-input" placeholder="e.g. qwen3:8b" />
+      <button class="ollama-dl-btn" id="ollamaColabDownloadBtn" disabled>Download</button>
+    </div>
+    <div class="ollama-dl-progress hidden" id="ollamaColabDlProgress">
+      <div class="ollama-dl-status" id="ollamaColabDlStatus">Checking...</div>
+      <div class="ollama-dl-bar-bg"><div class="ollama-dl-bar-fill" id="ollamaColabDlBarFill"></div></div>
+      <div class="ollama-dl-pct-row">
+        <span id="ollamaColabDlPct">0%</span>
+        <button class="ollama-cancel-btn" id="ollamaColabCancelBtn">✕ Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

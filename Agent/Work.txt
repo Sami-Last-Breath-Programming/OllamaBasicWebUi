@@ -1,0 +1,6 @@
+AGENT:
+    1. Check for more Bugs 
+    2. See is there any issue between logic of all files 
+    3. See all feature working properly
+    4. Look at each component and try to predict Bug or feature misfunction
+    5. Try to fix issue that can be happen in future 
